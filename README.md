@@ -1,6 +1,32 @@
 # Programmejums
 Zondes borta datora (mikrokontroliera) programmējums
 
+# Programmēšanas stila vadlīnijas
+Šīs ir tikai vadlīnijas, nesitīšu ja perfekti nesekosiet tām. Galvenais, lai kods ir saprotams un pārskatāms
+- Tabulācija ir 4 atstarpes
+- Komentārus var latviski/english, galvenais lai ir saprotami un labi apraksta kodu
+- Iesaku komentārus netaupīt, tiklīdz kaut kas liekas ne pilnīgi pašsaprotams, raksti komentāru
+- Komentāru garumam nevajadzētu pārsniegt 2 - 3 līnijas
+
+## Mainīgo noformējums
+![This is an image](Code_sample_1.png)
+- Mainīgo nosaukums var būt īsi līdz vidēji tekstuāls, galvenais lai no nosaukuma ir aptuveni skaidrs, kur izmanto
+- Visim mainīgiem ir jābūt definētiem vienā vietā (vai divās) un, kur nepieiciešams, ar komentāriem aprakstīts to pielietojums
+- Šīs pašas vadlīnijas arī attiecas uz definētām konstantēm
+- Lūgums turēt mainīgos ārpus header (main.h) faila, cik iespējams (Uz konstantēm tas neattiecas)
+
+## Koda noformējums
+![This is an image](Code_sample_2.png)
+- Galvenā doma ir sadalīšana pa blokiem ar attiecīgām komentētām sadalēm
+- Piemērā ir redzams ADC pārtraukums kā galvenais bloks, ar iekšējiem darbības soļiem sadalītiem mazākos blokos
+- Var dalīt kodu pa blokiem arī pēc saviem ieskatiem, galvenais lai ir labi sadalīts
+
+## #include un funkcijas
+![This is an image](Code_sample_3.png)
+- Pie #include droši rakstiet komentārus
+- Funkcijām lūdzu veidot aprakstu, pasakot ko dara, ko ievada (ar mainīgo aprakstu) un ko izvada
+- Ja izmantojat gatavus koda blokus no citiem avotiem, tos iesaku turēt atsevišķos failos un integrēt kā funkcijas
+
 
 # Git bash konfigurācija un lokālās repozitorijas izveide
 
