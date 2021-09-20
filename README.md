@@ -1,4 +1,4 @@
-# Programmejums
+# Programmējums
 Zondes borta datora (mikrokontroliera) programmējums
 
 # Programmēšanas stila vadlīnijas
