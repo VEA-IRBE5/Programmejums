@@ -1,0 +1,5 @@
+http://www.emcu.eu/how-to-manage-two-uart-usart2-and-usart1-under-interrupt/
+https://github.com/Xxxxhx/STM32_HAL_Tutorial/blob/master/4-Timer%20Interrupt.md
+https://the78mole.de/stm32-uart-continuous-receive-with-interrupt/
+https://controllerstech.com/sd-card-using-spi-in-stm32/
+https://cdn-shop.adafruit.com/datasheets/Si1145-46-47.pdf
