@@ -1,0 +1,4 @@
+(fp_lib_table
+  (lib (name Borta_Dators)(type KiCad)(uri ${KIPRJMOD}/Borta_Dators.pretty)(options "")(descr ""))
+  (lib (name LOCAL)(type KiCad)(uri C:/Users/emils/OneDrive/Desktop/Augstskola/3.kurss/1.Semestris/EIGP/Borta_Dators/LOCAL.pretty)(options "")(descr ""))
+)
