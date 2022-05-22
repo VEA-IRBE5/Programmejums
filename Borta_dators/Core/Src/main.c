@@ -202,6 +202,7 @@ static void MX_TIM10_Init(void);
 
 void I2C_Select_bus(uint8_t select);
 uint8_t Get_System_Status();
+uint8_t get_check_sum();
 void Get_BME280_in_all_readings();
 void Get_BME280_ex_all_readings();
 void Get_MPU6050_all_readings();
@@ -213,6 +214,13 @@ uint8_t Mount_open_SD_Card();
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+uint8_t get_check_sum(char *string)
+{
+	uint8_t XOR = 0;
+	for(uint8_t i = 0; i < strlen(string); i++)
+		XOR = XOR ^ string[i];
+	return XOR;
+}
 
 uint8_t Get_System_Status()
 {
@@ -571,7 +579,7 @@ int main(void)
 	HAL_UART_Receive_IT(&huart1, UART1_RxBuf, 2);
 
 	UART2_RxIsData = 0;
-	UART2_RxBytes = 2;
+	UART2_RxBytes = 4;
 	while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 0);
 	HAL_UART_Receive_IT(&huart2, UART2_RxBuf, 2);
 
@@ -628,7 +636,7 @@ int main(void)
 	  if(UART1_RxIsData == 0)
 		  UART1_RxBytes = 2;
 	  if(UART2_RxIsData == 0)
-		  UART2_RxBytes = 2;
+		  UART2_RxBytes = 4;
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -1253,7 +1261,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			strcat(Data_to_send, TempStr);
 		}
 		else
-			sprintf(Data_to_send, "--");
+			sprintf(Data_to_send, "00");
 
 
 		if(Sensors.BME280_External.Status == HAL_OK)
@@ -1263,7 +1271,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			strcat(Data_to_send, TempStr);
 		}
 		else
-			strcat(Data_to_send, ",--,--");
+			strcat(Data_to_send, ",00,00");
 
 
 		if(Sensors.SI1145.Status == HAL_OK)
@@ -1273,7 +1281,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			strcat(Data_to_send, TempStr);
 		}
 		else
-			strcat(Data_to_send, ",--");
+			strcat(Data_to_send, ",00");
 
 
 		// Write to file and sync current file addition with physical SD card
@@ -1731,94 +1739,116 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	// UART2 connects to the COM computer
 	if (huart == &huart2)
 	{
-		if (UART2_RxIsData == 1)
+		uint8_t buffer_len, marker, checksum1, checksum2;
+		buffer_len = strlen((char *)UART2_RxBuf);
+		marker = UART2_RxBuf[buffer_len-2];
+		checksum1 = UART2_RxBuf[buffer_len-1];
+		UART2_RxBuf[buffer_len-2] = 0;
+		UART2_RxBuf[buffer_len-1] = 0;
+		checksum2 = get_check_sum((char *)UART2_RxBuf);
+
+		if((marker == '*') && (checksum1 == checksum2))
 		{
-			for (uint8_t i = 0; i < UART2_RxBytes; i++)
-				UART2_DataBuf[i] = UART2_RxBuf[i];
-			UART2_RxIsData = 0;
-			UART2_RxBytes = 2;
-			HAL_UART_Receive_IT(&huart2, UART2_RxBuf, 2);
+			if (UART2_RxIsData == 1)
+			{
+				for (uint8_t i = 0; i < UART2_RxBytes; i++)
+					UART2_DataBuf[i] = UART2_RxBuf[i];
+				UART2_RxIsData = 0;
+				UART2_RxBytes = 4;
+			}
+			else
+			{
+				volatile uint8_t Command = UART2_RxBuf[0];
+				volatile uint8_t Parameter = UART2_RxBuf[1];
+
+
+				if(Command != 0x02)
+				{
+					UART2_RxBytes = 4;
+				}
+				memset(UART2_TxBuf, 0, UART_Buffer_size);
+
+				switch(Command)
+				{
+
+				// Status received from COM, pass it to bluetooth
+				case 0x00:
+					UART1_TxBuf[0] = 0x00;
+					UART1_TxBuf[1] = Parameter;
+					HAL_UART_Transmit_IT(&huart1, UART1_TxBuf, 2);
+				break;
+
+				// Send status to COM
+				case 0x01:
+					UART2_TxBuf[0] = 0x00;
+					UART2_TxBuf[1] = Get_System_Status();
+				break;
+
+				// Receive data from COM
+				case 0x02:
+					UART2_RxIsData = 1;
+					UART2_RxBytes = Parameter;
+				break;
+
+				// Send data to COM
+				case 0x03:
+					if(Parameter == 0x99)
+					{
+						Data_to_send[0] = ',';
+						buffer_len = strlen(Data_to_send);
+						UART2_TxBuf[0] = 0x02;
+						UART2_TxBuf[1] = buffer_len+1;
+						UART2_TxBuf[2] = Get_System_Status();
+						for(uint8_t i = 0; i < buffer_len; i++)
+							UART2_TxBuf[3+i] = Data_to_send[i];
+					}
+				break;
+
+				// Set RTC from received data
+				case 0x42:
+					if(Parameter == 0x88)
+					{
+						RTC_TimeTypeDef sTime;
+						RTC_DateTypeDef sDate;
+						sTime.Seconds = UART2_DataBuf[0];
+						sTime.Minutes = UART2_DataBuf[1];
+						sTime.Hours = UART2_DataBuf[2];
+						sDate.Date = UART2_DataBuf[3];
+						sDate.Month = UART2_DataBuf[4];
+						sDate.Year = UART2_DataBuf[5];
+						HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD);
+						HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BCD);
+						UART2_TxBuf[0] = 0x42;
+						UART2_TxBuf[1] = Get_System_Status();
+					}
+				break;
+
+				// Start rope cutting
+				case 0x4F:
+					if((Parameter == 0xCC) && (Rope_cut_status != ROPE_CUTTING))
+					{
+						Rope_cut_status = ROPE_CUTTING;
+						Rope_cut_delay = ROPE_CUT_TIME;
+					}
+				break;
+
+				default:
+				break;
+				}
+			}
+			buffer_len = strlen((char *)UART2_TxBuf);
+			UART2_TxBuf[buffer_len] = '*';
+			UART2_TxBuf[buffer_len+1] = get_check_sum((char *)UART2_TxBuf);
+			buffer_len = strlen((char *)UART2_TxBuf);
+			HAL_UART_Transmit_IT(&huart2, UART2_TxBuf, buffer_len);
+
+			HAL_UART_Receive_IT(&huart2, UART2_RxBuf, UART2_RxBytes);
 		}
 		else
 		{
-			volatile uint8_t Command = UART2_RxBuf[0];
-			volatile uint8_t Parameter = UART2_RxBuf[1];
-			RTC_TimeTypeDef sTime;
-			RTC_DateTypeDef sDate;
-
-
-			if(Command != 0x02)
-			{
-				UART2_RxBytes = 2;
-				HAL_UART_Receive_IT(&huart2, UART2_RxBuf, 2);
-			}
-
-			switch(Command)
-			{
-
-			// Status received from COM, pass it to bluetooth
-			case 0x00:
-				UART1_TxBuf[0] = 0x00;
-				UART1_TxBuf[1] = Parameter;
-				HAL_UART_Transmit_IT(&huart1, UART1_TxBuf, 2);
-			break;
-
-			// Send status to COM
-			case 0x01:
-				UART2_TxBuf[0] = 0x00;
-				UART2_TxBuf[1] = Get_System_Status();
-				HAL_UART_Transmit_IT(&huart2, UART2_TxBuf, 2);
-			break;
-
-			// Receive data from COM
-			case 0x02:
-				UART2_RxIsData = 1;
-				UART2_RxBytes = Parameter;
-				HAL_UART_Receive_IT(&huart2, UART2_RxBuf, Parameter);
-			break;
-
-			// Send data to COM
-			case 0x03:
-				if(Parameter == 0x99)
-				{
-					uint8_t temp;
-					Data_to_send[0] = ',';
-					temp = strlen(Data_to_send);
-					UART2_TxBuf[0] = 0x02;
-					UART2_TxBuf[1] = temp+1;
-					UART2_TxBuf[2] = Get_System_Status();
-					for(uint8_t i = 0; i < temp; i++)
-						UART2_TxBuf[3+i] = Data_to_send[i];
-					HAL_UART_Transmit_IT(&huart2, UART2_TxBuf, 3+temp);
-				}
-			break;
-
-			// Set RTC from received data
-			case 0x42:
-				sTime.Seconds = UART2_DataBuf[0];
-				sTime.Minutes = UART2_DataBuf[1];
-				sTime.Hours = UART2_DataBuf[2];
-				sDate.Date = UART2_DataBuf[3];
-				sDate.Month = UART2_DataBuf[4];
-				sDate.Year = UART2_DataBuf[5];
-				HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD);
-				HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BCD);
-			break;
-
-			// Start rope cutting
-			case 0x4F:
-				if((Parameter == 0xCC) && (Rope_cut_status != ROPE_CUTTING))
-				{
-					Rope_cut_status = ROPE_CUTTING;
-					Rope_cut_delay = ROPE_CUT_TIME;
-				}
-			break;
-
-			default:
-			break;
-			}
+			memset(UART2_RxBuf, 0, UART_Buffer_size);
+			HAL_UART_Receive_IT(&huart2, UART2_RxBuf, 4);
 		}
-		memset(UART2_RxBuf, 0, UART_Buffer_size);
 	}
 }
 
@@ -1826,11 +1856,13 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
 	if(huart == &huart1)
 	{
+		memset(UART2_RxBuf, 0, UART_Buffer_size);
 		HAL_UART_Receive_IT(&huart1, UART1_RxBuf, UART1_RxBytes);
 	}
 
 	if(huart == &huart2)
 	{
+		memset(UART2_RxBuf, 0, UART_Buffer_size);
 		HAL_UART_Receive_IT(&huart2, UART2_RxBuf, UART2_RxBytes);
 	}
 }

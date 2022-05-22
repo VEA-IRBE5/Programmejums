@@ -64,8 +64,8 @@ all: main-build
 main-build: Borta_dators.elf secondary-outputs
 
 # Tool invocations
-Borta_dators.elf: $(OBJS) $(USER_OBJS) E:\Studiju_materiali\IRBE5\Borta_dators\STM32F401CEUX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "Borta_dators.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"E:\Studiju_materiali\IRBE5\Borta_dators\STM32F401CEUX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Borta_dators.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
+Borta_dators.elf: $(OBJS) $(USER_OBJS) D:\Studiju_materiali\IRBE5\Borta_dators\STM32F401CEUX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "Borta_dators.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"D:\Studiju_materiali\IRBE5\Borta_dators\STM32F401CEUX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Borta_dators.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
