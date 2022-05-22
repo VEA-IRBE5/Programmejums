@@ -1253,7 +1253,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 		// Prepare data string that will be sent to COM
 		memset(Data_to_send, 0, sizeof(Data_to_send));
-		Data_to_send[0] = ',';
 		if(Sensors.BME280_Internal.Status == HAL_OK)
 		{
 			char TempStr[20];
@@ -1794,13 +1793,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 				case 0x03:
 					if(Parameter == 0x99)
 					{
-						Data_to_send[0] = ',';
 						buffer_len = strlen(Data_to_send);
 						UART2_TxBuf[0] = 0x02;
-						UART2_TxBuf[1] = buffer_len+1;
-						UART2_TxBuf[2] = Get_System_Status();
+						UART2_TxBuf[1] = buffer_len+2;
 						for(uint8_t i = 0; i < buffer_len; i++)
-							UART2_TxBuf[3+i] = Data_to_send[i];
+							UART2_TxBuf[2+i] = Data_to_send[i];
 					}
 				break;
 
