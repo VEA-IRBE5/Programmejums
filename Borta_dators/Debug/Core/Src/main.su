@@ -12,10 +12,10 @@ main.c:398:6:CAM_START	8	static
 main.c:416:6:CAM_STOP	8	static
 main.c:432:6:CAM_OFF	8	static
 main.c:1198:6:HAL_TIM_PeriodElapsedCallback	152	static
-main.c:1454:6:HAL_GPIO_EXTI_Callback	16	static
-main.c:1475:6:HAL_UART_RxCpltCallback	56	static
-main.c:1855:6:HAL_UART_ErrorCallback	8	static
-main.c:1876:6:Error_Handler	8	static,ignoring_inline_asm
+main.c:1453:6:HAL_GPIO_EXTI_Callback	16	static
+main.c:1474:6:HAL_UART_RxCpltCallback	56	static
+main.c:1852:6:HAL_UART_ErrorCallback	8	static
+main.c:1873:6:Error_Handler	8	static,ignoring_inline_asm
 main.c:1094:13:MX_USART2_UART_Init	8	static
 main.c:880:13:MX_TIM4_Init	48	static
 main.c:1061:13:MX_USART1_UART_Init	8	static
