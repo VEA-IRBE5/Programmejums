@@ -40,7 +40,7 @@
 /* USER CODE BEGIN PD */
 
 /* Buffer sizes */
-#define UART_Buffer_size 50		// 2B command or nB data
+#define UART_Buffer_size 60		// 2B command or nB data
 
 
 /* Rope cut and sleep mode defines */
@@ -107,6 +107,7 @@ TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim5;
 TIM_HandleTypeDef htim9;
 TIM_HandleTypeDef htim10;
+TIM_HandleTypeDef htim11;
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
@@ -161,6 +162,8 @@ uint8_t UART2_RxBuf[UART_Buffer_size];
 uint8_t UART2_DataBuf[UART_Buffer_size];
 volatile uint8_t UART2_RxIsData;
 volatile uint8_t UART2_RxBytes;
+volatile uint8_t UART2_Send_Sensor_Data;
+volatile uint8_t UART2_Reset_Countdown;
 
 
 /* CAM specific */
@@ -198,6 +201,7 @@ static void MX_I2C2_Init(void);
 static void MX_TIM5_Init(void);
 static void MX_TIM9_Init(void);
 static void MX_TIM10_Init(void);
+static void MX_TIM11_Init(void);
 /* USER CODE BEGIN PFP */
 
 void I2C_Select_bus(uint8_t select);
@@ -483,6 +487,7 @@ int main(void)
   MX_TIM5_Init();
   MX_TIM9_Init();
   MX_TIM10_Init();
+  MX_TIM11_Init();
   /* USER CODE BEGIN 2 */
 
 
@@ -580,6 +585,8 @@ int main(void)
 
 	UART2_RxIsData = 0;
 	UART2_RxBytes = 4;
+	UART2_Send_Sensor_Data = 0;
+	UART2_Reset_Countdown = 0;
 	while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 0);
 	HAL_UART_Receive_IT(&huart2, UART2_RxBuf, 2);
 
@@ -589,11 +596,12 @@ int main(void)
 
 
   /*------------------Start timers-----------------------*/
-	HAL_TIM_Base_Start_IT(&htim3);	// Sensor read cycle timer
-	HAL_TIM_Base_Start_IT(&htim4);	// Flashes LEDs
+	HAL_TIM_Base_Start_IT(&htim3);	// Sensor read cycle timer, T = 1s
+	HAL_TIM_Base_Start_IT(&htim4);	// Flashes LEDs, T = 0.5s
 
-	HAL_TIM_Base_Start_IT(&htim5);	// CAM1 heartbeat timer
-	HAL_TIM_Base_Start_IT(&htim9);	// CAM2 heartbeat timer
+	HAL_TIM_Base_Start_IT(&htim5);	// CAM1 heartbeat timer, T = 5s
+	HAL_TIM_Base_Start_IT(&htim9);	// CAM2 heartbeat timer, T = 5s
+	HAL_TIM_Base_Start_IT(&htim11);	// UART management, T = 10ms
 
 
   /*----------------- Camera init ----------------------*/
@@ -1054,6 +1062,51 @@ static void MX_TIM10_Init(void)
 }
 
 /**
+  * @brief TIM11 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM11_Init(void)
+{
+
+  /* USER CODE BEGIN TIM11_Init 0 */
+
+  /* USER CODE END TIM11_Init 0 */
+
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM11_Init 1 */
+
+  /* USER CODE END TIM11_Init 1 */
+  htim11.Instance = TIM11;
+  htim11.Init.Prescaler = 16000;
+  htim11.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim11.Init.Period = 10;
+  htim11.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim11.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim11) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_OC_Init(&htim11) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_TIMING;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_OC_ConfigChannel(&htim11, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM11_Init 2 */
+
+  /* USER CODE END TIM11_Init 2 */
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -1253,6 +1306,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 		// Prepare data string that will be sent to COM
 		memset(Data_to_send, 0, sizeof(Data_to_send));
+		Data_to_send[0] = ',';
 		if(Sensors.BME280_Internal.Status == HAL_OK)
 		{
 			char TempStr[20];
@@ -1446,6 +1500,39 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		else
 			HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
 	}
+
+
+	// UART2 management
+	if (htim == &htim11)
+	{
+
+		if(UART2_Reset_Countdown > 300)	// 10ms * 300 = 3s
+		{
+			memset(UART2_RxBuf, 0, UART_Buffer_size);
+			HAL_UART_Receive_IT(&huart2, UART2_RxBuf, 4);
+			UART2_Reset_Countdown = 0;
+		}
+		else
+			UART2_Reset_Countdown++;
+
+
+
+		// Prepare and send sensor data when requested
+		if(UART2_Send_Sensor_Data == 1)
+		{
+			uint8_t buffer_len = strlen(Data_to_send) - 1;	// Ignore first symbol in string (which always is ',')
+			for(uint8_t i = 0; i < buffer_len; i++)
+				UART2_TxBuf[i] = Data_to_send[i+1];
+
+			uint8_t checksum = get_check_sum((char *)UART2_TxBuf);
+			UART2_TxBuf[buffer_len] = '*';
+			UART2_TxBuf[buffer_len+1] = checksum;
+			HAL_UART_Transmit_IT(&huart2, UART2_TxBuf, strlen((char *)UART2_TxBuf));
+
+			UART2_Send_Sensor_Data = 0;
+		}
+
+	}
 }
 
 
@@ -1506,6 +1593,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 				UART1_RxBytes = 2;
 				HAL_UART_Receive_IT(&huart1, UART1_RxBuf, 2);
 			}
+
+			memset(UART1_TxBuf, 0, UART_Buffer_size);
 
 			switch(Command)
 			{
@@ -1748,6 +1837,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 		if((marker == '*') && (checksum1 == checksum2))
 		{
+			UART2_Reset_Countdown = 0;
 			if (UART2_RxIsData == 1)
 			{
 				for (uint8_t i = 0; i < UART2_RxBytes; i++)
@@ -1764,6 +1854,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 				if(Command != 0x02)
 				{
 					UART2_RxBytes = 4;
+					memset(UART2_RxBuf, 0, UART_Buffer_size);
 				}
 				memset(UART2_TxBuf, 0, UART_Buffer_size);
 
@@ -1793,11 +1884,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 				case 0x03:
 					if(Parameter == 0x99)
 					{
-						buffer_len = strlen(Data_to_send);
+						buffer_len = strlen(Data_to_send) - 1;
 						UART2_TxBuf[0] = 0x02;
 						UART2_TxBuf[1] = buffer_len+2;
-						for(uint8_t i = 0; i < buffer_len; i++)
-							UART2_TxBuf[2+i] = Data_to_send[i];
+						UART2_Send_Sensor_Data = 1;
 					}
 				break;
 
@@ -1833,19 +1923,24 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 				break;
 				}
 			}
-			buffer_len = strlen((char *)UART2_TxBuf);
-			UART2_TxBuf[buffer_len] = '*';
-			UART2_TxBuf[buffer_len+1] = get_check_sum((char *)UART2_TxBuf);
-			buffer_len = strlen((char *)UART2_TxBuf);
-			HAL_UART_Transmit_IT(&huart2, UART2_TxBuf, buffer_len);
 
-			HAL_UART_Receive_IT(&huart2, UART2_RxBuf, UART2_RxBytes);
+			// prepare checksum for TX buffer contents and send it
+			buffer_len = strlen((char *)UART2_TxBuf);
+			if(buffer_len > 0)
+			{
+				checksum1 = get_check_sum((char *)UART2_TxBuf);
+				UART2_TxBuf[buffer_len] = '*';
+				UART2_TxBuf[buffer_len+1] = checksum1;
+				HAL_UART_Transmit_IT(&huart2, UART2_TxBuf, strlen((char *)UART2_TxBuf));
+			}
 		}
 		else
 		{
+			UART2_RxBytes = 4;
 			memset(UART2_RxBuf, 0, UART_Buffer_size);
-			HAL_UART_Receive_IT(&huart2, UART2_RxBuf, 4);
 		}
+
+		HAL_UART_Receive_IT(&huart2, UART2_RxBuf, UART2_RxBytes);
 	}
 }
 
@@ -1853,14 +1948,14 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
 	if(huart == &huart1)
 	{
-		memset(UART2_RxBuf, 0, UART_Buffer_size);
-		HAL_UART_Receive_IT(&huart1, UART1_RxBuf, UART1_RxBytes);
+		memset(UART1_RxBuf, 0, UART_Buffer_size);
+		HAL_UART_Receive_IT(&huart1, UART1_RxBuf, 2);
 	}
 
 	if(huart == &huart2)
 	{
 		memset(UART2_RxBuf, 0, UART_Buffer_size);
-		HAL_UART_Receive_IT(&huart2, UART2_RxBuf, UART2_RxBytes);
+		HAL_UART_Receive_IT(&huart2, UART2_RxBuf, 4);
 	}
 }
 
