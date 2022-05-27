@@ -51,7 +51,10 @@
 #define ROPE_CUT_TIME 10			// in seconds
 #define LOWER_ALTITUDE_LIMIT 1000 	// in meters
 #define UPPER_ALTITUDE_LIMIT 28000 	// in meters
-#define ALTITUDE_UPDATE_PERIOD 30	// in seconds
+#define ASCENDING_SPEED_MAX 20		// in meters/second
+#define VERTICAL_SPEED_MAX 100		// in meters/second
+#define ALTITUDE_BUFFER_SIZE 10
+
 
 
 /* Sensor related defines */
@@ -144,7 +147,10 @@ volatile uint16_t Cycle_runtime_max;
 
 RTC_TimeTypeDef Current_Time;
 RTC_DateTypeDef Current_Date;
+double Altitude_last[ALTITUDE_BUFFER_SIZE];
 volatile double Altitude_max;
+volatile uint8_t Altitude_index;
+
 
 
 
@@ -278,9 +284,19 @@ void I2C_Select_bus(uint8_t select)
 void Get_BME280_in_all_readings()
 {
 	I2C_Select_bus(I2C_BUS_SEL_BMEs);
+	if(Sensors.BME280_Internal.Status != HAL_OK)
+	{
+		Sensors.BME280_Internal.Status = BME280_Get_ID(I2C_handle_BME_in__MPU, &Sensors.BME280_Internal.ID, I2C_short_timeout);
+		if (Sensors.BME280_Internal.Status == HAL_OK)
+			Sensors.BME280_Internal.Status = BME280_Init(I2C_handle_BME_in__MPU, I2C_short_timeout);
+	}
+
 	Sensors.BME280_Internal.Status = BME280_Get_ID(I2C_handle_BME_in__MPU, &Sensors.BME280_Internal.ID, I2C_short_timeout);
 	if(Sensors.BME280_Internal.Status != HAL_OK)
+	{
+		HAL_I2C_Init(&I2C_handle_BME_in__MPU);
 		return;
+	}
 	Sensors.BME280_Internal.Status = BME280_Get_All(I2C_handle_BME_in__MPU, I2C_long_timeout);
 	if(Sensors.BME280_Internal.Status != HAL_OK)
 		return;
@@ -295,9 +311,19 @@ void Get_BME280_in_all_readings()
 void Get_BME280_ex_all_readings()
 {
 	I2C_Select_bus(I2C_BUS_SEL_BMEs);
+	if(Sensors.BME280_External.Status != HAL_OK)
+	{
+		Sensors.BME280_External.Status = BME280_Get_ID(I2C_handle_BME_ex__SI, &Sensors.BME280_External.ID, I2C_short_timeout);
+		if (Sensors.BME280_External.Status == HAL_OK)
+			Sensors.BME280_External.Status = BME280_Init(I2C_handle_BME_ex__SI, I2C_short_timeout);
+	}
+
 	Sensors.BME280_External.Status = BME280_Get_ID(I2C_handle_BME_ex__SI, &Sensors.BME280_External.ID, I2C_short_timeout);
 	if(Sensors.BME280_External.Status != HAL_OK)
+	{
+		HAL_I2C_Init(&I2C_handle_BME_ex__SI);
 		return;
+	}
 	Sensors.BME280_External.Status = BME280_Get_All(I2C_handle_BME_ex__SI, I2C_long_timeout);
 	if(Sensors.BME280_External.Status != HAL_OK)
 		return;
@@ -312,9 +338,19 @@ void Get_BME280_ex_all_readings()
 void Get_MPU6050_all_readings()
 {
 	I2C_Select_bus(I2C_BUS_SEL_MPU__SI);
+	if(Sensors.MPU650.Status != HAL_OK)
+	{
+		Sensors.MPU650.Status = MPU6050_read_ID(I2C_handle_BME_in__MPU, &Sensors.MPU650.ID, I2C_short_timeout);
+		if (Sensors.MPU650.Status == HAL_OK)
+			Sensors.MPU650.Status = MPU6050_Init(I2C_handle_BME_in__MPU, I2C_short_timeout);
+	}
+
 	Sensors.MPU650.Status = MPU6050_read_ID(I2C_handle_BME_in__MPU, &Sensors.MPU650.ID, I2C_short_timeout);
 	if(Sensors.MPU650.Status != HAL_OK)
+	{
+		HAL_I2C_Init(&I2C_handle_BME_in__MPU);
 		return;
+	}
 	Sensors.MPU650.Status = MPU6050_read_All(I2C_handle_BME_in__MPU, I2C_long_timeout);
 	if(Sensors.MPU650.Status != HAL_OK)
 		return;
@@ -328,9 +364,15 @@ void Get_MPU6050_all_readings()
 void Get_SI1145_all_readings()
 {
 	I2C_Select_bus(I2C_BUS_SEL_MPU__SI);
+	if(Sensors.SI1145.Status != HAL_OK)
+		Sensors.SI1145.Status = SI1145_Init(I2C_handle_BME_ex__SI, I2C_short_timeout);
+
 	Sensors.SI1145.Status = SI1145_read_ID(I2C_handle_BME_ex__SI, &Sensors.SI1145.ID, I2C_short_timeout);
 	if(Sensors.SI1145.Status != HAL_OK)
+	{
+		HAL_I2C_Init(&I2C_handle_BME_ex__SI);
 		return;
+	}
 	Sensors.SI1145.Status = SI1145_Read_Data(I2C_handle_BME_ex__SI, I2C_long_timeout);
 	if(Sensors.SI1145.Status != HAL_OK)
 		return;
@@ -529,7 +571,10 @@ int main(void)
   /*------------------Sensors init-----------------------*/
 	Sensors.BME280_Internal.Pressure_ref = PRESSURE_REFERENCE;
 	Sensors.BME280_External.Pressure_ref = PRESSURE_REFERENCE;
-
+	for(uint8_t i = 0; i < ALTITUDE_BUFFER_SIZE; i++)
+		Altitude_last[i] = 0;
+	Altitude_max = 0;
+	Altitude_index = 0;
 
 	/* Wait for Sensor power-on */
 	HAL_Delay(1000);
@@ -570,11 +615,6 @@ int main(void)
 		Sensors.SI1145.Status = SI1145_read_ID(I2C_handle_BME_ex__SI, &Sensors.SI1145.ID, I2C_short_timeout);
 		Get_SI1145_all_readings();
 	}
-
-
-  /*--------Max altitude read from stabilised data-------*/
-	Get_BME280_ex_all_readings();
-	Altitude_max = Sensors.BME280_External.Altitude;
 
 
   /*---------------UART receiver setup-------------------*/
@@ -1268,11 +1308,27 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		Get_SI1145_all_readings();
 
 
-		if(Sensors.BME280_External.Altitude > Altitude_max)
-			Altitude_max = Sensors.BME280_External.Altitude;
+		// Altitude readings filtering, needed due to this data being used in probe control
+		double Altitude_last_sum = 0;
+		for(uint8_t i = 0; i < ALTITUDE_BUFFER_SIZE; i++)
+			Altitude_last_sum += Altitude_last[i];
+		double Altitude_last_avrg = Altitude_last_sum/ALTITUDE_BUFFER_SIZE;
+
+		double Altitude_read = Sensors.BME280_External.Altitude;
+		if((abs(Altitude_read - Altitude_last_avrg) < VERTICAL_SPEED_MAX) && (Sensors.BME280_External.Status == HAL_OK))
+		{
+			Altitude_last[Altitude_index] = Altitude_read;
+			if(Altitude_index < (ALTITUDE_BUFFER_SIZE-1))
+				Altitude_index++;
+			else
+				Altitude_index = 0;
+		}
+		if(((Altitude_read - Altitude_last_avrg) < ASCENDING_SPEED_MAX) && (Altitude_read > Altitude_max))
+			Altitude_max = Altitude_read;
+
 
 		// Check if probe has fallen below altitude limit for going to sleep mode
-		if((Altitude_max > LOWER_ALTITUDE_LIMIT+200) && (Sensors.BME280_External.Altitude < LOWER_ALTITUDE_LIMIT))
+		if((Altitude_max > LOWER_ALTITUDE_LIMIT+200) && (Altitude_last_avrg < LOWER_ALTITUDE_LIMIT))
 		{
 			HAL_TIM_Base_Stop_IT(&htim3);
 			HAL_TIM_Base_Start_IT(&htim10);
@@ -1281,7 +1337,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 
 		// Max altitude rope cut condition
-		if((Sensors.BME280_External.Altitude > UPPER_ALTITUDE_LIMIT) && (Rope_cut_status != ROPE_CUTTING))
+		if((Altitude_last_avrg > UPPER_ALTITUDE_LIMIT) && (Rope_cut_status != ROPE_CUTTING))
 		{
 			Rope_cut_status = ROPE_CUTTING;
 			Rope_cut_delay = ROPE_CUT_TIME;
