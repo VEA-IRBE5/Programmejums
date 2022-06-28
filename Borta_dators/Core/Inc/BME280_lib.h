@@ -88,19 +88,17 @@ HAL_StatusTypeDef BME280_Get_Temperature(I2C_HandleTypeDef handle, uint16_t Time
 HAL_StatusTypeDef BME280_Get_Pressure(I2C_HandleTypeDef handle, uint16_t Timeout);
 HAL_StatusTypeDef BME280_Get_Humidity(I2C_HandleTypeDef handle, uint16_t Timeout);
 
-double BME280_T_Double(BME280_Calib_Data_struct *Calib_data);
-double BME280_P_Double(BME280_Calib_Data_struct *Calib_data);
-double BME280_H_Double(BME280_Calib_Data_struct *Calib_data);
-double BME280_Altitude_Double(double Pressure, double Pressure_ref);
-
-uint32_t BME280_T_Int(BME280_Calib_Data_struct *Calib_data);
-uint32_t BME280_P_Int(BME280_Calib_Data_struct *Calib_data);
-uint32_t BME280_H_Int(BME280_Calib_Data_struct *Calib_data);
-
-
-
-struct BME280_Calib_Data_struct BME280_internal_Calib_Data;
-struct BME280_Calib_Data_struct BME280_external_Calib_Data;
+//double BME280_T_Double(BME280_Calib_Data_struct *Calib_data);
+//double BME280_P_Double(BME280_Calib_Data_struct *Calib_data);
+//double BME280_H_Double(BME280_Calib_Data_struct *Calib_data);
+//double BME280_Altitude_Double(double Pressure, double Pressure_ref);
+//
+//uint32_t BME280_T_Int(BME280_Calib_Data_struct *Calib_data);
+//uint32_t BME280_P_Int(BME280_Calib_Data_struct *Calib_data);
+//uint32_t BME280_H_Int(BME280_Calib_Data_struct *Calib_data);
+//
+//extern struct BME280_Calib_Data_struct BME280_internal_Calib_Data;
+//extern struct BME280_Calib_Data_struct BME280_external_Calib_Data;
 
 
 #endif /* INC_BME280_LIB_H_ */

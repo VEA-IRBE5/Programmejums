@@ -1,3 +1,4 @@
 (sym_lib_table
   (lib (name Borta_Dators)(type Legacy)(uri ${KIPRJMOD}/Borta_Dators.lib)(options "")(descr ""))
+  (lib (name Borta-Dators-rescue)(type Legacy)(uri "${KIPRJMOD}/Borta Dators-rescue.lib")(options "")(descr ""))
 )

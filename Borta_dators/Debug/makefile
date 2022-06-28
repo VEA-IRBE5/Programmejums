@@ -1,6 +1,6 @@
 ################################################################################
 # Automatically-generated file. Do not edit!
-# Toolchain: GNU Tools for STM32 (9-2020-q2-update)
+# Toolchain: GNU Tools for STM32 (10.3-2021.10)
 ################################################################################
 
 -include ../makefile.init
@@ -47,14 +47,14 @@ BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME)$(if $(BUILD_ART
 EXECUTABLES += \
 Borta_dators.elf \
 
+MAP_FILES += \
+Borta_dators.map \
+
 SIZE_OUTPUT += \
 default.size.stdout \
 
 OBJDUMP_LIST += \
 Borta_dators.list \
-
-OBJCOPY_BIN += \
-Borta_dators.bin \
 
 
 # All Target
@@ -64,8 +64,8 @@ all: main-build
 main-build: Borta_dators.elf secondary-outputs
 
 # Tool invocations
-Borta_dators.elf: $(OBJS) $(USER_OBJS) D:\Studiju_materiali\IRBE5\Borta_dators\STM32F401CEUX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "Borta_dators.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"D:\Studiju_materiali\IRBE5\Borta_dators\STM32F401CEUX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Borta_dators.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
+Borta_dators.elf Borta_dators.map: $(OBJS) $(USER_OBJS) C:\Users\localuser\Desktop\COM\Programmejums\Borta_dators\STM32F401CEUX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "Borta_dators.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\localuser\Desktop\COM\Programmejums\Borta_dators\STM32F401CEUX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Borta_dators.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -79,17 +79,12 @@ Borta_dators.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
 	@echo 'Finished building: $@'
 	@echo ' '
 
-Borta_dators.bin: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-objcopy  -O binary $(EXECUTABLES) "Borta_dators.bin"
-	@echo 'Finished building: $@'
-	@echo ' '
-
 # Other Targets
 clean:
-	-$(RM) Borta_dators.bin Borta_dators.elf Borta_dators.list default.size.stdout
+	-$(RM) Borta_dators.elf Borta_dators.list Borta_dators.map default.size.stdout
 	-@echo ' '
 
-secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST) $(OBJCOPY_BIN)
+secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)
 
 fail-specified-linker-script-missing:
 	@echo 'Error: Cannot find the specified linker script. Check the linker settings in the build configuration.'

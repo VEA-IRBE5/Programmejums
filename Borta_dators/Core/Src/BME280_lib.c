@@ -14,6 +14,17 @@ struct BME280_pressure_data_struct Pressure_Data;
 struct BME280_temperature_data_struct Temperature_Data;
 struct BME280_humidity_data_struct Humidity_Data;
 
+extern double BME280_T_Double(BME280_Calib_Data_struct *Calib_data);
+extern double BME280_P_Double(BME280_Calib_Data_struct *Calib_data);
+extern double BME280_H_Double(BME280_Calib_Data_struct *Calib_data);
+extern double BME280_Altitude_Double(double Pressure, double Pressure_ref);
+
+extern uint32_t BME280_T_Int(BME280_Calib_Data_struct *Calib_data);
+extern uint32_t BME280_P_Int(BME280_Calib_Data_struct *Calib_data);
+extern uint32_t BME280_H_Int(BME280_Calib_Data_struct *Calib_data);
+
+extern struct BME280_Calib_Data_struct BME280_internal_Calib_Data;
+extern struct BME280_Calib_Data_struct BME280_external_Calib_Data;
 
 HAL_StatusTypeDef BME280_Init(I2C_HandleTypeDef handle, uint16_t Timeout)
 {

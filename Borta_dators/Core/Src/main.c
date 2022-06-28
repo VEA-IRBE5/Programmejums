@@ -130,7 +130,17 @@ volatile uint8_t sd_mounted;
 volatile uint8_t sd_file_cnt;
 volatile uint8_t sd_error_cnt;
 
+double BME280_T_Double(BME280_Calib_Data_struct *Calib_data);
+double BME280_P_Double(BME280_Calib_Data_struct *Calib_data);
+double BME280_H_Double(BME280_Calib_Data_struct *Calib_data);
+double BME280_Altitude_Double(double Pressure, double Pressure_ref);
 
+uint32_t BME280_T_Int(BME280_Calib_Data_struct *Calib_data);
+uint32_t BME280_P_Int(BME280_Calib_Data_struct *Calib_data);
+uint32_t BME280_H_Int(BME280_Calib_Data_struct *Calib_data);
+
+struct BME280_Calib_Data_struct BME280_internal_Calib_Data;
+struct BME280_Calib_Data_struct BME280_external_Calib_Data;
 /* System core and misc variables */
 volatile uint8_t Is_asleep;
 volatile uint8_t Rope_cut_delay, Rope_cut_status;
@@ -227,7 +237,7 @@ uint8_t Mount_open_SD_Card();
 uint8_t get_check_sum(char *string)
 {
 	uint8_t XOR = 0;
-	for(uint8_t i = 0; i < strlen(string); i++)
+	for(uint8_t i = 0; string[i] != '*' && i < strlen(string); i++)
 		XOR = XOR ^ string[i];
 	return XOR;
 }
@@ -620,7 +630,7 @@ int main(void)
   /*---------------UART receiver setup-------------------*/
 	UART1_RxIsData = 0;
 	UART1_RxBytes = 2;
-	while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10) == 0);
+	//while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_10) == 0);
 	HAL_UART_Receive_IT(&huart1, UART1_RxBuf, 2);
 
 	UART2_RxIsData = 0;
@@ -628,7 +638,7 @@ int main(void)
 	UART2_Send_Sensor_Data = 0;
 	UART2_Reset_Countdown = 0;
 	while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_3) == 0);
-	HAL_UART_Receive_IT(&huart2, UART2_RxBuf, 2);
+	HAL_UART_Receive_IT(&huart2, UART2_RxBuf, 4);
 
 	UART1_TxBuf[0] = 0x00;
 	UART1_TxBuf[1] = Get_System_Status();
@@ -1885,10 +1895,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	{
 		uint8_t buffer_len, marker, checksum1, checksum2;
 		buffer_len = strlen((char *)UART2_RxBuf);
-		marker = UART2_RxBuf[buffer_len-2];
-		checksum1 = UART2_RxBuf[buffer_len-1];
-		UART2_RxBuf[buffer_len-2] = 0;
-		UART2_RxBuf[buffer_len-1] = 0;
+		marker = UART2_RxBuf[2];
+		checksum1 = UART2_RxBuf[3];
 		checksum2 = get_check_sum((char *)UART2_RxBuf);
 
 		if((marker == '*') && (checksum1 == checksum2))

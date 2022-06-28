@@ -1,6 +1,6 @@
-SI1145_lib.c:14:19:SI1145_Init	40	static
-SI1145_lib.c:96:19:SI1145_read_ID	24	static
-SI1145_lib.c:103:19:SI1145_Read_Data	40	static
-SI1145_lib.c:121:10:SI1145_IR_raw	0	static
-SI1145_lib.c:127:10:SI1145_VIS_raw	0	static
-SI1145_lib.c:133:8:SI1145_UV_double	8	static
+../Core/Src/SI1145_lib.c:14:19:SI1145_Init	40	static
+../Core/Src/SI1145_lib.c:96:19:SI1145_read_ID	24	static
+../Core/Src/SI1145_lib.c:103:19:SI1145_Read_Data	40	static
+../Core/Src/SI1145_lib.c:121:10:SI1145_IR_raw	0	static
+../Core/Src/SI1145_lib.c:127:10:SI1145_VIS_raw	0	static
+../Core/Src/SI1145_lib.c:133:8:SI1145_UV_double	8	static
